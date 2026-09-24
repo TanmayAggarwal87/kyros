@@ -25,7 +25,7 @@ Define a stable domain contract for workflow creation, plan review/start, task p
 
 Use one normalized error shape with category/code, safe user message, internal diagnostic context, retryability, and scope (`task` or `workflow`). At minimum distinguish: input, planning, acquisition, extraction, validation, provider/rate limit, payment, budget, persistence, and unexpected internal errors. Keep a causal trace internally without exposing secrets or raw provider failures to users.
 
-Persist failures and attempt counts. Domain retries may replan a query; infrastructure retries use bounded exponential backoff with jitter. Decide fatality by dependency and whether useful partial records remain. Never swallow errors, loop indefinitely, or create plausible fake balances, hashes, sources, records, or evidence. A truthful partial dataset is valid when state and provenance clearly show its limits.
+Persist failures and attempt counts. For each Gemini API operation, allow at most **three calls total, including the initial call**. For transient 429/503 and similar temporary service failures, wait **30 seconds** before the second call and **90 seconds** before the third. If all three calls fail, mark the affected task failed and show **“Gemini server is busy. Please try again later.”** Domain retries may replan a query and have a separate counter; neither policy may create an unbounded loop. Decide workflow impact by dependencies and whether useful partial records remain. Never swallow errors, loop indefinitely, or create plausible fake balances, hashes, sources, records, or evidence. A truthful partial dataset is valid when state and provenance clearly show its limits.
 
 ## Testing and evaluation
 

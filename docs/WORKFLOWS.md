@@ -65,7 +65,7 @@ Cancellation must prevent new claims and stop active work where safe; record wor
 | Failure | Response |
 | --- | --- |
 | Domain: zero useful Exa results or poor source coverage | Record attempt; ask Gemini to refine only that task's query with previous query/failure context; cap around three domain attempts unless explicit policy changes |
-| Infrastructure: Gemini 429/503, temporary network/provider outage | Bounded exponential backoff with jitter, separate attempt counter, and concurrency limits |
+| Infrastructure: Gemini 429/503 or temporary provider/network outage | Make at most **three Gemini API calls per operation, including the initial call**. After the first transient failure, wait **30 seconds** before call two; after the second transient failure, wait **90 seconds** before call three. If call three also fails, fail the affected task and show the user **“Gemini server is busy. Please try again later.”** Track infrastructure attempts separately from domain retries. Do not retry indefinitely or fail unrelated tasks solely for this task-local error. |
 | Validation: malformed planner output | Reject before execution; bounded repair/replan if safe, otherwise planning failure |
 | Extraction: missing fields or invalid output | Keep missing values explicit; retry/repair only when evidence supports it |
 | Budget/payment failure | Stop affected paid task and record precise failure; do not bypass cap or simulate payment |

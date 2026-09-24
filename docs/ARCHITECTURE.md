@@ -72,6 +72,10 @@ Internal credits govern spending; they are not cryptocurrency or an on-chain con
 
 Enforce available user credits, workflow limit, per-call ceiling, and configured guards **atomically** before a payment. Model `limit`, `spent`, `reserved`, and `available` consistently; release reservations on failure and reconcile confirmed settlement. Concurrent tasks must not read a balance and later overwrite it. Gemini can suggest acquisition but cannot approve or bypass payment rules. Keep Stripe webhooks idempotent and verified, treasury keys server-only, and payment receipts tied to tasks and sources.
 
+### Demo x402 workflow reference
+
+For the hackathon demo, a user sets a research budget such as **$0.05** from their Kyros credit balance. Kyros reserves/reduces that available balance before starting the workflow. The agent then makes **two x402 calls** to Kyros-operated local demo premium-data resources. The resources may return synthetic/demo data, while both payment flows must execute and settle genuinely on **Base Sepolia** through the platform treasury. Persist and show the real transaction hash and verified receipt for each successful call, linked to its task and source. The x402 payments are separate from the user's internal Kyros credits; the user does not connect or manage a blockchain wallet. Any unused reservation follows the release/reconciliation rule above.
+
 ## Authorization and safety
 
 Authenticate with Clerk at the server boundary and check ownership on every workflow, dataset, evidence, export, credit, and payment operation. Never accept a client-supplied user ID as authority. Supabase service-role access, if used, stays server-only and must preserve application-level ownership checks. Restrict provider URLs and redirects to prevent SSRF; treat retrieved content as hostile to prompts and rendering. See [Engineering](ENGINEERING.md) for boundary validation and error handling.
