@@ -13,6 +13,7 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ClerkUserButton } from "@/components/auth/clerk-user-button";
 import type { ActiveTab } from "@/lib/use-workflow-store";
 
 interface HeaderProps {
@@ -130,16 +131,8 @@ export function Header({
             </button>
           </div>
 
-          {/* User Profile */}
-          <div className="flex items-center gap-2 pl-2 border-l border-border/60">
-            <div className="size-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-semibold text-xs flex items-center justify-center shadow-xs">
-              A
-            </div>
-            <div className="hidden xl:flex flex-col text-left">
-              <span className="text-xs font-semibold text-foreground leading-none">Akshat</span>
-              <span className="text-[10px] text-muted-foreground mt-0.5">Research Lead</span>
-            </div>
-          </div>
+          {/* Clerk Authentication & User Profile */}
+          <ClerkUserButton />
 
           {/* Theme Toggle */}
           <Button

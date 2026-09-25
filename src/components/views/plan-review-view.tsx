@@ -20,6 +20,7 @@ interface PlanReviewViewProps {
   onBackToEdit: () => void;
   isStarting: boolean;
   availableCredits: number;
+  creditsStatus: "live" | "unavailable";
 }
 
 export function PlanReviewView({
@@ -29,6 +30,7 @@ export function PlanReviewView({
   onBackToEdit,
   isStarting,
   availableCredits,
+  creditsStatus,
 }: PlanReviewViewProps) {
   if (!workflow || !plan) {
     return (
@@ -86,7 +88,7 @@ export function PlanReviewView({
             ) : (
               <>
                 <Play className="size-3.5 mr-1.5 fill-current" />
-                EXECUTE PIPELINE
+                PREVIEW PIPELINE
               </>
             )}
           </Button>
@@ -192,7 +194,7 @@ export function PlanReviewView({
               <div className="flex items-center justify-between">
                 <span className="text-zinc-400">Available Balance:</span>
                 <span className="font-semibold text-zinc-100">
-                  ${availableCredits.toFixed(2)}
+                  {creditsStatus === "live" ? `$${availableCredits.toFixed(2)}` : "Unavailable"}
                 </span>
               </div>
             </div>
@@ -201,9 +203,9 @@ export function PlanReviewView({
           <div className="p-3 rounded-lg bg-zinc-950/80 border border-zinc-800 text-[11px] text-zinc-400 font-sans">
             <div className="flex items-center gap-1 font-medium text-zinc-200 mb-0.5 font-mono text-xs">
               <ShieldCheck className="size-3 text-emerald-400" />
-              <span>Double-Entry Reservation</span>
+              <span>Budget Preview</span>
             </div>
-            Unspent funds are immediately unlocked back to your balance when the pipeline terminates.
+            This plan is a preview. Research execution and budget reservation are not connected yet.
           </div>
         </div>
       </div>

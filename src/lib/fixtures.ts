@@ -9,46 +9,15 @@ import type {
 } from '@/core/contracts';
 
 export const INITIAL_CREDIT_ACCOUNT: UserCreditAccount = {
-  userId: 'usr_clerk_demo_8829',
-  balanceUsd: 12.50,
-  reservedUsd: 0.05,
-  availableUsd: 12.45,
+  userId: 'unavailable',
+  balanceUsd: 0.00,
+  reservedUsd: 0.00,
+  availableUsd: 0.00,
   currency: 'USD',
   updatedAt: new Date().toISOString(),
 };
 
-export const INITIAL_LEDGER_ENTRIES: CreditLedgerEntry[] = [
-  {
-    id: 'led-1',
-    userId: 'usr_clerk_demo_8829',
-    type: 'stripe_topup',
-    amountUsd: 15.00,
-    description: 'Initial Stripe balance top-up',
-    timestamp: '2026-09-24T10:00:00.000Z',
-    receiptRef: 'ch_3PtR8a2eZvKYlo2C128b9AaF',
-  },
-  {
-    id: 'led-2',
-    userId: 'usr_clerk_demo_8829',
-    workflowId: 'wf-ai-startups',
-    runId: 'run-ai-startups-1',
-    type: 'workflow_reservation',
-    amountUsd: -0.05,
-    description: 'Budget reservation for AI Startups Research workflow',
-    timestamp: '2026-09-25T14:00:00.000Z',
-  },
-  {
-    id: 'led-3',
-    userId: 'usr_clerk_demo_8829',
-    workflowId: 'wf-ai-startups',
-    runId: 'run-ai-startups-1',
-    type: 'x402_debit',
-    amountUsd: -0.02,
-    description: 'Settled x402 payment: Premium benchmark telemetry on Base Sepolia',
-    timestamp: '2026-09-25T14:05:12.000Z',
-    receiptRef: '0x89e2c608f62f3a8bf1d7644265435985098ff456e30b691b34fa394ba0577dae',
-  },
-];
+export const INITIAL_LEDGER_ENTRIES: CreditLedgerEntry[] = [];
 
 export const DEMO_FIELDS: DatasetFieldSchema[] = [
   { name: 'company_name', type: 'string', description: 'Legal / brand name of company', required: true },

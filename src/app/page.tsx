@@ -23,6 +23,8 @@ export default function Home() {
     historyWorkflows,
     creditAccount,
     ledgerEntries,
+    creditsStatus,
+    executionNotice,
     selectedEvidence,
     selectCellEvidence,
     clearSelection,
@@ -32,7 +34,6 @@ export default function Home() {
     resumeWorkflow,
     cancelWorkflow,
     rerunWorkflow,
-    topUpCredits,
     exportCsv,
     exportJson,
     isPlanning,
@@ -45,12 +46,16 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/20">
+      <div role="status" className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 text-center text-xs text-amber-200">
+        Prototype preview: workflows, records, and historical receipts are sample data. Research execution is unavailable. Credits: {creditsStatus === 'live' ? 'live account' : 'unavailable until signed in and database configured'}.
+      </div>
+      {executionNotice && <div role="alert" className="border-b border-amber-500/30 px-4 py-2 text-center text-xs text-amber-200">{executionNotice}</div>}
       {/* Kyros Header with Clerk user & credits indicator */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         availableCredits={creditAccount.availableUsd}
-        onQuickTopUp={() => topUpCredits(10)}
+        onQuickTopUp={() => setActiveTab("credits")}
       />
 
       {/* Main Workspace Body */}
@@ -60,6 +65,7 @@ export default function Home() {
             onPlan={createAndPlanWorkflow}
             isPlanning={isPlanning}
             userAvailableCredits={creditAccount.availableUsd}
+            enforceCreditBalance={creditsStatus === 'live'}
           />
         )}
 
@@ -71,6 +77,7 @@ export default function Home() {
             onBackToEdit={() => setActiveTab("new")}
             isStarting={isExecuting}
             availableCredits={creditAccount.availableUsd}
+            creditsStatus={creditsStatus}
           />
         )}
 
@@ -117,7 +124,7 @@ export default function Home() {
           <CreditsView
             creditAccount={creditAccount}
             ledgerEntries={ledgerEntries}
-            onTopUp={topUpCredits}
+            creditsStatus={creditsStatus}
           />
         )}
       </main>

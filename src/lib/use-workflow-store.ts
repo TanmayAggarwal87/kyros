@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type {
   Workflow,
   WorkflowProgressSnapshot,
@@ -20,6 +20,7 @@ import {
   DEMO_FIELDS,
 } from "./fixtures";
 import { generateDatasetCsv } from "./csv";
+import { userCreditAccountSchema, creditLedgerEntrySchema } from "@/core/contracts/credits";
 
 export type ActiveTab = "new" | "plan" | "run" | "dataset" | "history" | "credits";
 
@@ -36,7 +37,7 @@ export function useWorkflowStore() {
   const [currentProgress, setCurrentProgress] = useState<WorkflowProgressSnapshot | null>(
     DEMO_PROGRESS_SNAPSHOT
   );
-  const [datasetRecords, setDatasetRecords] = useState<DatasetRecord[]>(DEMO_RECORDS);
+  const [datasetRecords] = useState<DatasetRecord[]>(DEMO_RECORDS);
   const [historyWorkflows] = useState<Workflow[]>([
     DEMO_WORKFLOW,
     {
@@ -89,6 +90,35 @@ export function useWorkflowStore() {
 
   const [creditAccount, setCreditAccount] = useState<UserCreditAccount>(INITIAL_CREDIT_ACCOUNT);
   const [ledgerEntries, setLedgerEntries] = useState<CreditLedgerEntry[]>(INITIAL_LEDGER_ENTRIES);
+  const [creditsStatus, setCreditsStatus] = useState<"live" | "unavailable">("unavailable");
+  const [executionNotice, setExecutionNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function refreshCredits() {
+      try {
+        const response = await fetch('/api/credits', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Credits unavailable');
+        const body: unknown = await response.json();
+        if (!body || typeof body !== 'object' || !('account' in body) || !('ledger' in body)) throw new Error('Invalid credit response');
+        const account = userCreditAccountSchema.parse(body.account);
+        const ledger = creditLedgerEntrySchema.array().parse(body.ledger);
+        if (!mounted) return;
+        setCreditAccount(account);
+        setLedgerEntries(ledger);
+        setCreditsStatus('live');
+      } catch {
+        if (!mounted) return;
+        setCreditAccount(INITIAL_CREDIT_ACCOUNT);
+        setLedgerEntries([]);
+        setCreditsStatus('unavailable');
+      }
+    }
+    void refreshCredits();
+    window.addEventListener('focus', refreshCredits);
+    const interval = window.setInterval(refreshCredits, 30000);
+    return () => { mounted = false; window.removeEventListener('focus', refreshCredits); window.clearInterval(interval); };
+  }, []);
 
   const [selectedEvidence, setSelectedEvidence] = useState<SelectedEvidenceItem | null>(null);
   const [isPlanning, setIsPlanning] = useState(false);
@@ -225,140 +255,10 @@ export function useWorkflowStore() {
     [creditAccount.userId]
   );
 
-  // Start Research Run action
+  // Execution stays unavailable until the API is connected to a durable worker.
   const startWorkflowRun = useCallback(async () => {
-    if (!currentWorkflow || !currentPlan) return;
-
-    setIsExecuting(true);
-    const costReservation = currentWorkflow.budgetPolicy.maxSpendUsd;
-
-    // Deduct reservation from available credits atomically
-    setCreditAccount((prev) => ({
-      ...prev,
-      availableUsd: Math.max(0, +(prev.availableUsd - costReservation).toFixed(3)),
-      reservedUsd: +(prev.reservedUsd + costReservation).toFixed(3),
-      updatedAt: new Date().toISOString(),
-    }));
-
-    // Record ledger entry
-    const resLedger: CreditLedgerEntry = {
-      id: `led-${Date.now()}`,
-      userId: creditAccount.userId,
-      workflowId: currentWorkflow.id,
-      runId: currentWorkflow.runId,
-      type: "workflow_reservation",
-      amountUsd: -costReservation,
-      description: `Budget reservation for run: "${currentWorkflow.prompt.slice(0, 40)}..."`,
-      timestamp: new Date().toISOString(),
-    };
-    setLedgerEntries((prev) => [resLedger, ...prev]);
-
-    // Initial snapshot
-    const initialProgress: WorkflowProgressSnapshot = {
-      workflowId: currentWorkflow.id,
-      runId: currentWorkflow.runId,
-      status: "running",
-      progressPercent: 10,
-      totalTasks: currentPlan.tasks.length,
-      completedTasks: 0,
-      failedTasks: 0,
-      updatedAt: new Date().toISOString(),
-      tasks: currentPlan.tasks.map((t, idx) => ({
-        id: t.id,
-        name: t.name,
-        type: t.type,
-        status: idx === 0 ? "running" : "pending",
-        attemptCounts: { domain: idx === 0 ? 1 : 0, infrastructure: idx === 0 ? 1 : 0 },
-        startedAt: idx === 0 ? new Date().toISOString() : undefined,
-      })),
-    };
-
-    setCurrentProgress(initialProgress);
-    setCurrentWorkflow((prev) => (prev ? { ...prev, status: "running" } : null));
-    setActiveTab("run");
-
-    // Simulate multi-step live execution
-    let step = 1;
-    const interval = window.setInterval(() => {
-      step++;
-      if (step <= currentPlan.tasks.length) {
-        setCurrentProgress((prev) => {
-          if (!prev) return null;
-          const nextTasks = prev.tasks.map((t, idx) => {
-            if (idx < step - 1) {
-              return { ...t, status: "succeeded" as const, finishedAt: new Date().toISOString() };
-            }
-            if (idx === step - 1) {
-              return {
-                ...t,
-                status: "running" as const,
-                startedAt: new Date().toISOString(),
-                attemptCounts: { domain: 1, infrastructure: 1 },
-              };
-            }
-            return t;
-          });
-          return {
-            ...prev,
-            progressPercent: Math.round(((step - 1) / currentPlan.tasks.length) * 100),
-            completedTasks: step - 1,
-            tasks: nextTasks,
-            updatedAt: new Date().toISOString(),
-          };
-        });
-      } else {
-        window.clearInterval(interval);
-        // Completed run
-        setCurrentProgress((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            status: "completed",
-            progressPercent: 100,
-            completedTasks: currentPlan.tasks.length,
-            tasks: prev.tasks.map((t) => ({
-              ...t,
-              status: "succeeded" as const,
-              finishedAt: t.finishedAt ?? new Date().toISOString(),
-            })),
-            updatedAt: new Date().toISOString(),
-          };
-        });
-
-        setCurrentWorkflow((prev) => (prev ? { ...prev, status: "completed" } : null));
-        setDatasetRecords(DEMO_RECORDS);
-        setIsExecuting(false);
-
-        // Reconcile budget: release unused reservation
-        const actualCost = 0.035;
-        const refund = +(costReservation - actualCost).toFixed(3);
-        setCreditAccount((prev) => ({
-          ...prev,
-          balanceUsd: +(prev.balanceUsd - actualCost).toFixed(3),
-          reservedUsd: +(prev.reservedUsd - costReservation).toFixed(3),
-          availableUsd: +(prev.availableUsd + refund).toFixed(3),
-          updatedAt: new Date().toISOString(),
-        }));
-
-        if (refund > 0) {
-          const relLedger: CreditLedgerEntry = {
-            id: `led-rel-${Date.now()}`,
-            userId: creditAccount.userId,
-            workflowId: currentWorkflow.id,
-            runId: currentWorkflow.runId,
-            type: "workflow_release",
-            amountUsd: refund,
-            description: `Released unspent reservation ($${refund.toFixed(3)})`,
-            timestamp: new Date().toISOString(),
-          };
-          setLedgerEntries((prev) => [relLedger, ...prev]);
-        }
-      }
-    }, 1500);
-
-    setRunSimulationTimer(interval);
-  }, [currentWorkflow, currentPlan, creditAccount.userId]);
-
+    setExecutionNotice('Research execution is not connected yet. This plan is a preview only.');
+  }, []);
   // Pause workflow
   const pauseWorkflow = useCallback(() => {
     if (runSimulationTimer) {
@@ -398,28 +298,6 @@ export function useWorkflowStore() {
       targetWorkflow.budgetPolicy.allowPaidSources
     );
   }, [createAndPlanWorkflow]);
-
-  // Top up credits action
-  const topUpCredits = useCallback((amountUsd: number) => {
-    setCreditAccount((prev) => ({
-      ...prev,
-      balanceUsd: +(prev.balanceUsd + amountUsd).toFixed(2),
-      availableUsd: +(prev.availableUsd + amountUsd).toFixed(2),
-      updatedAt: new Date().toISOString(),
-    }));
-
-    const entry: CreditLedgerEntry = {
-      id: `led-top-${Date.now()}`,
-      userId: creditAccount.userId,
-      type: "stripe_topup",
-      amountUsd,
-      description: `Stripe checkout instant top-up: $${amountUsd.toFixed(2)} USD`,
-      timestamp: new Date().toISOString(),
-      receiptRef: `ch_${Date.now().toString(36)}`,
-    };
-
-    setLedgerEntries((prev) => [entry, ...prev]);
-  }, [creditAccount.userId]);
 
   // CSV Export action
   const exportCsv = useCallback((includeEvidence: boolean) => {
@@ -506,6 +384,8 @@ export function useWorkflowStore() {
     historyWorkflows,
     creditAccount,
     ledgerEntries,
+    creditsStatus,
+    executionNotice,
     selectedEvidence,
     selectCellEvidence,
     clearSelection,
@@ -515,7 +395,6 @@ export function useWorkflowStore() {
     resumeWorkflow,
     cancelWorkflow,
     rerunWorkflow,
-    topUpCredits,
     exportCsv,
     exportJson,
     isPlanning,

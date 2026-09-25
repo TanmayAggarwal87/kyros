@@ -1,41 +1,19 @@
-import { NextResponse } from "next/server";
-import { DEMO_WORKFLOW, DEMO_PLAN } from "@/lib/fixtures";
+import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/core/auth/server-auth';
 
-export async function GET() {
-  return NextResponse.json({
-    workflows: [DEMO_WORKFLOW],
-  });
+async function requireUser(): Promise<NextResponse | null> {
+  try { await getAuthenticatedUserId(); return null; }
+  catch { return NextResponse.json({ error: 'Sign in to continue' }, { status: 401 }); }
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const prompt = body.prompt;
+export async function GET() {
+  const unauthorized = await requireUser();
+  if (unauthorized) return unauthorized;
+  return NextResponse.json({ error: 'Workflow persistence is not configured' }, { status: 503 });
+}
 
-    if (!prompt || typeof prompt !== "string") {
-      return NextResponse.json(
-        { error: "Prompt string is required" },
-        { status: 400 }
-      );
-    }
-
-    const workflowId = `wf-${Date.now().toString(36)}`;
-    const runId = `run-${Date.now().toString(36)}`;
-
-    return NextResponse.json({
-      workflow: {
-        ...DEMO_WORKFLOW,
-        id: workflowId,
-        runId,
-        prompt,
-        status: "ready",
-      },
-      plan: DEMO_PLAN,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid request body" },
-      { status: 400 }
-    );
-  }
+export async function POST() {
+  const unauthorized = await requireUser();
+  if (unauthorized) return unauthorized;
+  return NextResponse.json({ error: 'Workflow creation is not configured' }, { status: 503 });
 }

@@ -16,6 +16,7 @@ import { DEMO_PRESET_PROMPTS } from "@/lib/fixtures";
 
 interface PromptViewProps {
   onPlan: (prompt: string, constraints: string[], maxSpend: number, allowPaid: boolean) => Promise<void>;
+  enforceCreditBalance?: boolean;
   isPlanning: boolean;
   userAvailableCredits: number;
 }
@@ -30,7 +31,7 @@ const COMMON_FIELDS = [
   "technical_focus",
 ];
 
-export function PromptView({ onPlan, isPlanning, userAvailableCredits }: PromptViewProps) {
+export function PromptView({ onPlan, isPlanning, userAvailableCredits, enforceCreditBalance = false }: PromptViewProps) {
   const [prompt, setPrompt] = useState(
     "Top AI infrastructure startups founded in 2024 with funding amounts, verified founders, and benchmark telemetry"
   );
@@ -74,7 +75,7 @@ export function PromptView({ onPlan, isPlanning, userAvailableCredits }: PromptV
       return;
     }
 
-    if (maxSpend > userAvailableCredits) {
+    if (enforceCreditBalance && maxSpend > userAvailableCredits) {
       setErrorMsg(
         `Budget ($${maxSpend.toFixed(2)}) exceeds available credit balance ($${userAvailableCredits.toFixed(2)}). Please add credits.`
       );
@@ -224,7 +225,7 @@ export function PromptView({ onPlan, isPlanning, userAvailableCredits }: PromptV
                 <div className="pt-3 border-t border-border/50 flex items-center justify-between gap-4">
                   <div>
                     <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <span>Include x402 Premium Telemetry</span>
+                      <span>Include x402 Premium Telemetry (preview)</span>
                       <Badge variant="outline" className="text-[10px] text-purple-600 dark:text-purple-400 border-purple-500/30">
                         Base Sepolia
                       </Badge>

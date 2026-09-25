@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   description: "Turn natural-language research requests into auditable workflows and verified, sourced datasets.",
 };
 
+import { KyrosAuthProvider } from "@/components/auth/clerk-provider-wrapper";
+
 export default function RootLayout({
   children,
 }: {
@@ -30,7 +32,9 @@ export default function RootLayout({
       lang="en"
       className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable)}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <KyrosAuthProvider>{children}</KyrosAuthProvider>
+      </body>
     </html>
   );
 }

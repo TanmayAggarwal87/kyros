@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import {
   Coins,
-  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,25 +12,44 @@ import type { UserCreditAccount, CreditLedgerEntry } from "@/core/contracts";
 interface CreditsViewProps {
   creditAccount: UserCreditAccount;
   ledgerEntries: CreditLedgerEntry[];
-  onTopUp: (amountUsd: number) => void;
+  creditsStatus: "live" | "unavailable";
 }
 
-export function CreditsView({ creditAccount, ledgerEntries, onTopUp }: CreditsViewProps) {
+export function CreditsView({ creditAccount, ledgerEntries, creditsStatus }: CreditsViewProps) {
   const [topUpAmount, setTopUpAmount] = useState<number>(10);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
 
   const handleTopUp = async () => {
     setIsProcessing(true);
-    await new Promise((r) => setTimeout(r, 600));
-    onTopUp(topUpAmount);
-    setIsProcessing(false);
-    setSuccessNotice(`Added $${topUpAmount.toFixed(2)} USD to your balance.`);
-    setTimeout(() => setSuccessNotice(null), 3500);
+    setErrorNotice(null);
+    try {
+      const res = await fetch("/api/checkout/stripe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountUsd: topUpAmount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorNotice(typeof data.error === 'string' ? data.error : 'Checkout is unavailable');
+        return;
+      }
+      if (typeof data.checkoutUrl === 'string') {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+      setErrorNotice('Checkout did not return a valid URL');
+    } catch {
+      setErrorNotice('Could not contact Checkout');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const getLedgerTypeBadge = (type: string) => {
     switch (type) {
+      case "welcome_grant":
+        return <Badge variant="success" className="text-[10px]">Welcome Credit</Badge>;
       case "stripe_topup":
         return <Badge variant="success" className="text-[10px]">Stripe Top-Up</Badge>;
       case "workflow_reservation":
@@ -71,10 +89,10 @@ export function CreditsView({ creditAccount, ledgerEntries, onTopUp }: CreditsVi
             </div>
             <div className="text-4xl font-extrabold text-foreground font-mono flex items-center gap-2 mt-1">
               <Coins className="size-7 text-amber-500 shrink-0" />
-              <span>${creditAccount.availableUsd.toFixed(2)}</span>
-              <span className="text-sm font-normal text-muted-foreground">USD</span>
+              <span>{creditsStatus === "live" ? `$${creditAccount.availableUsd.toFixed(2)}` : "Unavailable"}</span>
+              {creditsStatus === "live" && <span className="text-sm font-normal text-muted-foreground">USD</span>}
             </div>
-            <div className="text-xs text-muted-foreground mt-1">
+            <div className={`text-xs text-muted-foreground mt-1 ${creditsStatus === "live" ? "" : "hidden"}`}>
               Reserved in active runs: ${creditAccount.reservedUsd.toFixed(2)} • Total balance: ${creditAccount.balanceUsd.toFixed(2)}
             </div>
           </div>
@@ -98,7 +116,7 @@ export function CreditsView({ creditAccount, ledgerEntries, onTopUp }: CreditsVi
 
             <Button
               onClick={handleTopUp}
-              disabled={isProcessing}
+              disabled={isProcessing || creditsStatus !== "live"}
               size="sm"
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md shadow-emerald-600/20"
             >
@@ -107,12 +125,7 @@ export function CreditsView({ creditAccount, ledgerEntries, onTopUp }: CreditsVi
           </div>
         </div>
 
-        {successNotice && (
-          <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs flex items-center gap-2">
-            <CheckCircle2 className="size-4 shrink-0 text-emerald-500" />
-            <span>{successNotice}</span>
-          </div>
-        )}
+        {errorNotice && <p role="alert" className="text-xs text-red-400">{errorNotice}</p>}
       </div>
 
       {/* Credit Ledger Table */}

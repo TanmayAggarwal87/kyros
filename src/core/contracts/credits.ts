@@ -10,6 +10,7 @@ export interface UserCreditAccount {
 }
 
 export type LedgerEntryType =
+  | 'welcome_grant'
   | 'stripe_topup'
   | 'workflow_reservation'
   | 'workflow_release'
@@ -43,6 +44,7 @@ export const creditLedgerEntrySchema = z.object({
   workflowId: z.string().optional(),
   runId: z.string().optional(),
   type: z.enum([
+    'welcome_grant',
     'stripe_topup',
     'workflow_reservation',
     'workflow_release',
