@@ -55,6 +55,11 @@ export class GeminiRetryPolicy {
       } catch (error) {
         attempts.push({ attemptNumber: attempt, error });
 
+        // Non-retryable errors (e.g. missing API key, invalid auth, schema mismatch) fail immediately
+        if (error instanceof KyrosError && !error.retryable) {
+          throw error;
+        }
+
         if (attempt >= this.config.maxAttempts) {
           // Exhausted all 3 attempts!
           throw KyrosError.geminiBusy({

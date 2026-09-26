@@ -1,6 +1,7 @@
 import type { NormalizedErrorPayload } from '../contracts/errors';
 import type { Task } from '../contracts/task';
 import type { Workflow, WorkflowState } from '../contracts/workflow';
+import type { DatasetRecord } from '../contracts/dataset';
 
 export interface ITaskClaimer {
   /**
@@ -27,6 +28,7 @@ export interface ITaskClaimer {
 
 export interface IWorkflowRepository {
   getWorkflow(id: string): Promise<Workflow | null>;
+  getWorkflowsByUser(userId: string): Promise<readonly Workflow[]>;
   saveWorkflow(workflow: Workflow): Promise<void>;
   updateWorkflowStatus(
     id: string,
@@ -44,4 +46,14 @@ export interface IWorkflowRepository {
    * Used for deterministic crash and interruption recovery.
    */
   findStrandedRunningTasks(workflowId: string, staleBeforeMs: number): Promise<readonly Task[]>;
+
+  /**
+   * Persists final dataset records with cell-level evidence.
+   */
+  saveDatasetRecords(records: readonly DatasetRecord[]): Promise<void>;
+
+  /**
+   * Retrieves dataset records with cell-level evidence for a workflow.
+   */
+  getDatasetRecords(workflowId: string, runId?: string): Promise<readonly DatasetRecord[]>;
 }

@@ -9,8 +9,10 @@ export async function GET() {
   catch { return NextResponse.json({ error: 'Sign in to continue' }, { status: 401 }); }
   try {
     const credits = SupabaseCreditService.fromEnvironment();
-    const account = await credits.getOrCreateAccount(userId);
-    const ledger = await credits.getLedger(userId);
+    const [account, ledger] = await Promise.all([
+      credits.getOrCreateAccount(userId),
+      credits.getLedger(userId),
+    ]);
     return NextResponse.json({ account, ledger });
   } catch (error) {
     return NextResponse.json({ error: error instanceof KyrosError ? error.safeMessage : 'Credit ledger is unavailable' }, { status: 503 });

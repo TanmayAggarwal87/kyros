@@ -1,6 +1,7 @@
 import type { NormalizedErrorPayload } from '../contracts/errors';
 import type { Task, TaskState } from '../contracts/task';
 import type { Workflow, WorkflowState } from '../contracts/workflow';
+import type { DatasetRecord } from '../contracts/dataset';
 import { TaskStateMachine, WorkflowStateMachine } from '../state/state-machine';
 import type { ITaskClaimer, IWorkflowRepository } from './repository';
 
@@ -11,12 +12,20 @@ import type { ITaskClaimer, IWorkflowRepository } from './repository';
 export class InMemoryWorkflowRepository implements IWorkflowRepository, ITaskClaimer {
   private readonly workflows = new Map<string, Workflow>();
   private readonly tasks = new Map<string, Task>();
+  private readonly datasetRecords = new Map<string, DatasetRecord>();
 
   // --- Workflow Methods ---
 
   async getWorkflow(id: string): Promise<Workflow | null> {
     const wf = this.workflows.get(id);
     return wf ? { ...wf } : null;
+  }
+
+  async getWorkflowsByUser(userId: string): Promise<readonly Workflow[]> {
+    return Array.from(this.workflows.values())
+      .filter((wf) => wf.userId === userId)
+      .sort((a, b) => b.timestamps.createdAt.localeCompare(a.timestamps.createdAt))
+      .map((wf) => ({ ...wf }));
   }
 
   async saveWorkflow(workflow: Workflow): Promise<void> {
@@ -85,6 +94,21 @@ export class InMemoryWorkflowRepository implements IWorkflowRepository, ITaskCla
         return !t.claimedUntilMs || t.claimedUntilMs < staleBeforeMs;
       })
       .map((t) => ({ ...t }));
+  }
+
+  // --- Dataset Records Methods ---
+
+  async saveDatasetRecords(records: readonly DatasetRecord[]): Promise<void> {
+    for (const rec of records) {
+      this.datasetRecords.set(rec.id, { ...rec });
+    }
+  }
+
+  async getDatasetRecords(workflowId: string, runId?: string): Promise<readonly DatasetRecord[]> {
+    return Array.from(this.datasetRecords.values())
+      .filter((r) => r.workflowId === workflowId && (runId ? r.runId === runId : true))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((r) => ({ ...r }));
   }
 
   // --- ITaskClaimer Methods ---
@@ -159,5 +183,6 @@ export class InMemoryWorkflowRepository implements IWorkflowRepository, ITaskCla
   clear(): void {
     this.workflows.clear();
     this.tasks.clear();
+    this.datasetRecords.clear();
   }
 }

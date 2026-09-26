@@ -4,24 +4,34 @@ import type { DatasetFieldSchema } from '../../contracts/planner';
 import type { ExtractedRecord } from '../../contracts/extraction';
 import { SchemaValidator, type IValidationService } from '../../quality/validator';
 import { RecordNormalizer, type INormalizationService } from '../../quality/normalizer';
+import type { IWorkflowRepository } from '../../persistence/repository';
 
 export interface QualityValidationHandlerOptions {
   readonly validator?: IValidationService;
   readonly normalizer?: INormalizationService;
+  readonly repository?: IWorkflowRepository;
 }
 
 export class QualityValidationHandler implements ITaskHandler {
   readonly taskType: TaskType = 'quality_validation';
   private readonly validator: IValidationService;
   private readonly normalizer: INormalizationService;
+  private readonly repository?: IWorkflowRepository;
 
   constructor(options: QualityValidationHandlerOptions = {}) {
     this.validator = options.validator ?? new SchemaValidator();
     this.normalizer = options.normalizer ?? new RecordNormalizer();
+    this.repository = options.repository;
   }
 
   async execute(context: TaskExecutionContext): Promise<TaskExecutionResult> {
-    const fields = (context.task.input.fields as DatasetFieldSchema[]) ?? context.workflow.fieldSchema;
+    const input = (context.task.input || {}) as Record<string, unknown>;
+    let fields: readonly DatasetFieldSchema[] = context.workflow.fieldSchema || [];
+    if (Array.isArray(input.fields) && input.fields.length > 0) {
+      if (typeof input.fields[0] === 'object' && input.fields[0] !== null && 'name' in (input.fields[0] as Record<string, unknown>)) {
+        fields = input.fields as DatasetFieldSchema[];
+      }
+    }
 
     // Collect extracted records from upstream task outputs or input
     const extractedRecords: ExtractedRecord[] = [];
@@ -31,10 +41,13 @@ export class QualityValidationHandler implements ITaskHandler {
     }
 
     // In a DAG workflow, the parent extraction task outputs `records` in outputData
-    // Check upstream dependencies if input doesn't directly contain them
-    if (extractedRecords.length === 0) {
-      // In the executor context, we can look up upstream task outputs from context if provided
-      // or from task.input
+    if (extractedRecords.length === 0 && this.repository) {
+      for (const depId of context.task.dependencies) {
+        const depTask = await this.repository.getTask(depId);
+        if (depTask?.outputData?.records && Array.isArray(depTask.outputData.records)) {
+          extractedRecords.push(...(depTask.outputData.records as ExtractedRecord[]));
+        }
+      }
     }
 
     const validationSummary = this.validator.validateRecords(extractedRecords, fields);
@@ -68,3 +81,4 @@ export class QualityValidationHandler implements ITaskHandler {
     };
   }
 }
+

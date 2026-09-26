@@ -88,7 +88,7 @@ export function PlanReviewView({
             ) : (
               <>
                 <Play className="size-3.5 mr-1.5 fill-current" />
-                PREVIEW PIPELINE
+                APPROVE & RUN PIPELINE
               </>
             )}
           </Button>
@@ -203,9 +203,9 @@ export function PlanReviewView({
           <div className="p-3 rounded-lg bg-zinc-950/80 border border-zinc-800 text-[11px] text-zinc-400 font-sans">
             <div className="flex items-center gap-1 font-medium text-zinc-200 mb-0.5 font-mono text-xs">
               <ShieldCheck className="size-3 text-emerald-400" />
-              <span>Budget Preview</span>
+              <span>Budget Governor</span>
             </div>
-            This plan is a preview. Research execution and budget reservation are not connected yet.
+            Approving this plan reserves the estimated budget and initiates autonomous data acquisition and extraction.
           </div>
         </div>
       </div>

@@ -11,20 +11,67 @@ import {
 } from '../contracts/extraction';
 import { KyrosError } from '../errors/kyros-error';
 
-const GeminiExtractedFieldZod = z.object({
+export const GeminiExtractedFieldZod = z.object({
   value: z.unknown().nullable().optional(),
   snippet: z.string().nullable().optional(),
-  supportState: z.enum(['supported', 'partially_supported', 'inferred', 'missing', 'conflicting']),
+  supportState: z
+    .enum(['supported', 'partially_supported', 'inferred', 'missing', 'conflicting'])
+    .or(
+      z.string().transform((val) => {
+        if (['supported', 'partially_supported', 'inferred', 'missing', 'conflicting'].includes(val)) {
+          return val as 'supported' | 'partially_supported' | 'inferred' | 'missing' | 'conflicting';
+        }
+        return 'supported';
+      })
+    )
+    .optional()
+    .default('supported'),
   rationale: z.string().nullable().optional(),
 });
 
-const GeminiExtractedRecordZod = z.object({
-  fields: z.record(z.string(), GeminiExtractedFieldZod),
+const FlexibleRecordZod = z.unknown().transform((raw: unknown): { fields: Record<string, unknown> } => {
+  if (raw && typeof raw === 'object') {
+    const rawObj = raw as Record<string, unknown>;
+    if (rawObj.fields && typeof rawObj.fields === 'object') {
+      return { fields: rawObj.fields as Record<string, unknown> };
+    }
+    // Flat format: { company_name: '...', company_name_snippet: '...', company_name_support_state: '...' }
+    const fields: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(rawObj)) {
+      if (k.endsWith('_snippet') || k.endsWith('_support_state') || k.endsWith('_rationale')) {
+        continue;
+      }
+      const snippet = rawObj[`${k}_snippet`] ?? (typeof v === 'string' ? v : undefined);
+      const supportState = rawObj[`${k}_support_state`] ?? 'supported';
+      const rationale = rawObj[`${k}_rationale`];
+
+      if (typeof v === 'object' && v !== null && ('value' in v || 'snippet' in v)) {
+        fields[k] = v;
+      } else {
+        fields[k] = {
+          value: v,
+          snippet: typeof snippet === 'string' ? snippet : undefined,
+          supportState: typeof supportState === 'string' ? supportState : 'supported',
+          rationale: typeof rationale === 'string' ? rationale : undefined,
+        };
+      }
+    }
+    return { fields };
+  }
+  return { fields: {} };
 });
 
-const GeminiExtractionResponseZod = z.object({
-  records: z.array(GeminiExtractedRecordZod),
-});
+const GeminiExtractionResponseZod = z.preprocess((input: unknown) => {
+  if (Array.isArray(input)) {
+    return { records: input };
+  }
+  if (input && typeof input === 'object' && Array.isArray((input as Record<string, unknown>).records)) {
+    return input;
+  }
+  return { records: [] };
+}, z.object({
+  records: z.array(FlexibleRecordZod),
+}));
 
 export interface IExtractionService {
   extractFromSources(request: ExtractionRequest): Promise<ExtractionResult>;
@@ -119,7 +166,21 @@ export class GeminiExtractor implements IExtractionService {
       '   - "missing": Value is NOT found in the source text. Set value to null and snippet to null. DO NOT GUESS OR FABRICATE.',
       '   - "conflicting": Source presents conflicting data for this field.',
       '4. NEVER FABRICATE: If a field is not present in the source, mark supportState as "missing" with value null.',
-      '5. Output must strictly conform to the requested JSON schema.',
+      '5. OUTPUT JSON FORMAT: Output MUST be valid JSON with a "records" array where each record has a "fields" map:',
+      '{',
+      '  "records": [',
+      '    {',
+      '      "fields": {',
+      '        "<fieldName>": {',
+      '          "value": "<extracted value or null>",',
+      '          "snippet": "<verbatim excerpt from source or null>",',
+      '          "supportState": "supported" | "partially_supported" | "inferred" | "missing" | "conflicting",',
+      '          "rationale": "<reasoning if inferred or missing>"',
+      '        }',
+      '      }',
+      '    }',
+      '  ]',
+      '}',
     ].join('\n');
 
     const prompt = [
@@ -155,21 +216,39 @@ export class GeminiExtractor implements IExtractionService {
       const recordFields: Record<string, ExtractedField> = {};
 
       for (const fieldSchema of fields) {
-        const extracted = rawRec.fields[fieldSchema.name];
+        const rawField = rawRec.fields[fieldSchema.name] as Record<string, unknown> | undefined;
 
-        if (!extracted || extracted.value === null || extracted.value === undefined) {
+        if (rawField === undefined || rawField === null) {
           recordFields[fieldSchema.name] = {
             value: null,
             snippet: undefined,
             supportState: 'missing',
-            rationale: extracted?.rationale ?? 'Field not found in source text',
+            rationale: 'Field not found in source text',
+          };
+        } else if (typeof rawField === 'object' && ('value' in rawField || 'snippet' in rawField || 'supportState' in rawField)) {
+          const val = rawField.value;
+          const snippet = typeof rawField.snippet === 'string' ? rawField.snippet.trim() : undefined;
+          const supportState = (typeof rawField.supportState === 'string' ? rawField.supportState : 'supported') as
+            | 'supported'
+            | 'partially_supported'
+            | 'inferred'
+            | 'missing'
+            | 'conflicting';
+          const rationale = typeof rawField.rationale === 'string' ? rawField.rationale.trim() : undefined;
+
+          recordFields[fieldSchema.name] = {
+            value: val ?? null,
+            snippet,
+            supportState: val === null || val === undefined ? 'missing' : supportState,
+            rationale,
           };
         } else {
+          // Direct scalar value
           recordFields[fieldSchema.name] = {
-            value: extracted.value,
-            snippet: extracted.snippet ? extracted.snippet.trim() : undefined,
-            supportState: extracted.supportState || 'supported',
-            rationale: extracted.rationale ? extracted.rationale.trim() : undefined,
+            value: rawField,
+            snippet: typeof rawField === 'string' ? rawField : undefined,
+            supportState: 'supported',
+            rationale: undefined,
           };
         }
       }

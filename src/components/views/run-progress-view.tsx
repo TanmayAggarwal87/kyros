@@ -184,17 +184,21 @@ export function RunProgressView({
             <div className="text-xl font-bold text-foreground">{recordsCount}</div>
           </div>
           <div className="p-3 rounded-xl border border-border/60 bg-muted/20 space-y-0.5">
-            <span className="text-[11px] text-muted-foreground">Web Sources Checked</span>
-            <div className="text-xl font-bold text-indigo-400">15</div>
+            <span className="text-[11px] text-muted-foreground">Tasks Completed</span>
+            <div className="text-xl font-bold text-indigo-400">
+              {progress.completedTasks} / {progress.totalTasks}
+            </div>
           </div>
           <div className="p-3 rounded-xl border border-border/60 bg-muted/20 space-y-0.5">
             <span className="text-[11px] text-muted-foreground">Citation Quality</span>
-            <div className="text-xl font-bold text-emerald-400">100% Sourced</div>
+            <div className="text-xl font-bold text-emerald-400">
+              {recordsCount > 0 ? "100% Sourced" : isRunning ? "Acquiring..." : "Pending"}
+            </div>
           </div>
           <div className="p-3 rounded-xl border border-border/60 bg-muted/20 space-y-0.5">
-            <span className="text-[11px] text-muted-foreground">Cost Incurred</span>
+            <span className="text-[11px] text-muted-foreground">Est. Cost Incurred</span>
             <div className="text-xl font-bold font-mono text-foreground">
-              ${(0.035).toFixed(3)}
+              ${((progress.completedTasks / Math.max(1, progress.totalTasks)) * (workflow.budgetPolicy?.maxSpendUsd ?? 0.05)).toFixed(3)}
             </div>
           </div>
         </div>

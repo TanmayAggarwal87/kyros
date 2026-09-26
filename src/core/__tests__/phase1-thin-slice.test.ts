@@ -20,7 +20,7 @@ describe('Phase 1 Thin Slice End-to-End Test', () => {
     // 1. Mock Gemini Caller for Planner and Extractor
     const mockGeminiCaller: IGeminiCaller = {
       async callModel(params) {
-        if (params.modelId.includes('pro')) {
+        if (params.systemInstruction?.includes('KYROS_PLANNER') || params.prompt.includes('User Research Request')) {
           // Planner response
           return JSON.stringify({
             summary: '3-stage research plan for AI robotics startups',

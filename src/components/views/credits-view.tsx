@@ -149,28 +149,36 @@ export function CreditsView({ creditAccount, ledgerEntries, creditsStatus }: Cre
             </TableRow>
           </TableHeader>
           <TableBody>
-            {ledgerEntries.map((entry) => (
-              <TableRow key={entry.id} className="hover:bg-muted/30">
-                <TableCell className="font-mono text-[11px] text-muted-foreground whitespace-nowrap">
-                  {new Date(entry.timestamp).toLocaleDateString()}
-                </TableCell>
-                <TableCell>{getLedgerTypeBadge(entry.type)}</TableCell>
-                <TableCell className="text-xs text-foreground max-w-[280px] truncate" title={entry.description}>
-                  {entry.description}
-                </TableCell>
-                <TableCell
-                  className={`font-mono text-xs font-semibold text-right ${
-                    entry.amountUsd >= 0
-                      ? "text-emerald-500"
-                      : "text-foreground"
-                  }`}
-                >
-                  {entry.amountUsd >= 0
-                    ? `+$${entry.amountUsd.toFixed(2)}`
-                    : `-$${Math.abs(entry.amountUsd).toFixed(3)}`}
+            {ledgerEntries.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center text-xs text-muted-foreground">
+                  No credit transactions recorded yet.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              ledgerEntries.map((entry) => (
+                <TableRow key={entry.id} className="hover:bg-muted/30">
+                  <TableCell className="font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                    {new Date(entry.timestamp).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>{getLedgerTypeBadge(entry.type)}</TableCell>
+                  <TableCell className="text-xs text-foreground max-w-[280px] truncate" title={entry.description}>
+                    {entry.description}
+                  </TableCell>
+                  <TableCell
+                    className={`font-mono text-xs font-semibold text-right ${
+                      entry.amountUsd >= 0
+                        ? "text-emerald-500"
+                        : "text-foreground"
+                    }`}
+                  >
+                    {entry.amountUsd >= 0
+                      ? `+$${entry.amountUsd.toFixed(2)}`
+                      : `-$${Math.abs(entry.amountUsd).toFixed(3)}`}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

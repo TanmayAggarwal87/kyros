@@ -6,6 +6,7 @@ import {
   Eye,
   Clock,
   Coins,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +53,16 @@ export function HistoryView({ workflows, onSelectWorkflow, onRerun }: HistoryVie
       </div>
 
       {/* History List */}
-      <div className="space-y-3">
+      {workflows.length === 0 ? (
+        <div className="p-12 text-center border border-dashed border-border/80 rounded-2xl space-y-3 bg-muted/10">
+          <History className="size-10 text-muted-foreground mx-auto opacity-40" />
+          <h3 className="text-sm font-semibold text-foreground">No Research History Yet</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            Queries you plan and execute will appear here with complete logs and persistent dataset records.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
         {workflows.map((wf) => (
           <Card
             key={wf.id}
@@ -130,7 +140,8 @@ export function HistoryView({ workflows, onSelectWorkflow, onRerun }: HistoryVie
             </CardContent>
           </Card>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

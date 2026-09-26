@@ -10,6 +10,16 @@ import { WebcmdNavigationHandler, type WebcmdNavigationHandlerOptions } from './
 import { GeminiExtractionHandler, type GeminiExtractionHandlerOptions } from './gemini-extraction-handler';
 import { QualityValidationHandler, type QualityValidationHandlerOptions } from './quality-validation-handler';
 import { DeduplicationHandler, type DeduplicationHandlerOptions } from './deduplication-handler';
+import type { IWorkflowRepository } from '../../persistence/repository';
+import type { IArtifactStore } from '../../research/artifacts-store';
+import { InMemoryArtifactStore } from '../../research/artifacts-store';
+import type { IResearchProvider } from '../../contracts/research';
+import { ExaResearchProvider } from '../../research/exa-provider';
+import type { IGeminiGateway } from '../../ai/gateway';
+import { GeminiGateway } from '../../ai/gateway';
+import { GeminiExtractor, type IExtractionService } from '../../extraction/gemini-extractor';
+import type { IWebcmdProvider } from '../../contracts/webcmd';
+import { WebcmdProvider } from '../../research/webcmd-provider';
 
 export interface StandardHandlersConfig {
   readonly discovery?: ExaDiscoveryHandlerOptions;
@@ -39,3 +49,31 @@ export function registerStandardHandlers(
     registry.register(new DeduplicationHandler(config.deduplication));
   }
 }
+
+export function createStandardHandlerRegistry(options?: {
+  repository?: IWorkflowRepository;
+  artifactStore?: IArtifactStore;
+  researchProvider?: IResearchProvider;
+  geminiGateway?: IGeminiGateway;
+  webcmdProvider?: IWebcmdProvider;
+  extractionService?: IExtractionService;
+}): TaskHandlerRegistry {
+  const artifactStore = options?.artifactStore ?? new InMemoryArtifactStore();
+  const researchProvider = options?.researchProvider ?? new ExaResearchProvider();
+  const extractor =
+    options?.extractionService ??
+    new GeminiExtractor(options?.geminiGateway ?? GeminiGateway.fromEnvironment());
+  const webcmdProvider = options?.webcmdProvider ?? new WebcmdProvider();
+
+  const registry = new TaskHandlerRegistry();
+  registerStandardHandlers(registry, {
+    discovery: { researchProvider, artifactStore },
+    browserNavigation: { webcmdProvider, artifactStore },
+    extraction: { extractionService: extractor, artifactStore },
+    validation: { repository: options?.repository },
+    deduplication: { repository: options?.repository },
+  });
+
+  return registry;
+}
+

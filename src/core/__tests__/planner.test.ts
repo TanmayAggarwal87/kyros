@@ -82,8 +82,8 @@ test('Planner generates valid structured plan from prompt', async () => {
   assert.equal(plan.summary, 'Research AI startups and funding');
   assert.equal(plan.tasks.length, 2);
   assert.equal(plan.fields.length, 2);
-  // Verify model routing selected gemini-2.5-pro for planner
-  assert.equal(caller.lastParams?.modelId, 'gemini-2.5-pro');
+  // Verify model routing selected gemini-3.1-flash-lite for planner
+  assert.equal(caller.lastParams?.modelId, 'gemini-3.1-flash-lite');
 });
 
 test('Planner rejects plans with unsupported capabilities', async () => {

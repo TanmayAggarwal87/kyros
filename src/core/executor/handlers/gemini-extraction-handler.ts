@@ -21,8 +21,20 @@ export class GeminiExtractionHandler implements ITaskHandler {
   }
 
   async execute(context: TaskExecutionContext): Promise<TaskExecutionResult> {
-    const input = context.task.input as Record<string, unknown>;
-    const fields = (input.fields as DatasetFieldSchema[]) ?? context.workflow.fieldSchema;
+    const input = (context.task.input || {}) as Record<string, unknown>;
+    let fields: readonly DatasetFieldSchema[] = context.workflow.fieldSchema || [];
+
+    if (Array.isArray(input.fields) && input.fields.length > 0) {
+      if (typeof input.fields[0] === 'object' && input.fields[0] !== null && 'name' in (input.fields[0] as Record<string, unknown>)) {
+        fields = input.fields as DatasetFieldSchema[];
+      } else if (typeof input.fields[0] === 'string') {
+        const requestedNames = new Set(input.fields as string[]);
+        const matched = (context.workflow.fieldSchema || []).filter((f) => requestedNames.has(f.name));
+        if (matched.length > 0) {
+          fields = matched;
+        }
+      }
+    }
 
     if (!fields || fields.length === 0) {
       return {
