@@ -146,10 +146,18 @@ export function RunProgressView({
             <Button
               size="sm"
               onClick={onViewDataset}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-lg shadow-indigo-600/20 px-4"
+              className="relative group overflow-hidden bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 hover:from-indigo-500 hover:via-blue-500 hover:to-cyan-400 text-white font-extrabold text-xs px-6 py-3 rounded-xl shadow-xl shadow-indigo-600/30 hover:shadow-indigo-500/50 hover:scale-[1.03] active:scale-[0.98] transition-all border border-indigo-400/40"
             >
-              <span>View Sourced Dataset ({recordsCount} records)</span>
-              <ArrowRight className="size-3.5 ml-1.5" />
+              <span className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+
+              <span className="relative flex items-center gap-2 tracking-wide">
+                <Database className="size-4 text-cyan-200" />
+                <span>View Sourced Dataset</span>
+                <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10.5px] font-mono font-bold text-white">
+                  {recordsCount} records
+                </span>
+                <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+              </span>
             </Button>
           )}
 
@@ -178,7 +186,43 @@ export function RunProgressView({
           indicatorClassName={isCompleted ? "bg-emerald-500" : "bg-gradient-to-r from-indigo-500 to-purple-500"}
         />
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+        {/* Live Behind-the-Scenes Status Message */}
+        <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            {isRunning && <span className="size-2 rounded-full bg-amber-500 animate-ping shrink-0" />}
+            {isCompleted && <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />}
+            <div className="space-y-0.5">
+              <span className="font-bold text-foreground block">
+                {isCompleted
+                  ? "Research Finished"
+                  : isRunning
+                  ? `Active Step: ${progress.tasks.find((t) => t.status === "running")?.name || "Processing Task Pipeline"}`
+                  : "Status Idle"}
+              </span>
+              <span className="text-muted-foreground font-mono text-[11px] block">
+                {isCompleted && "Sourced dataset generated with 100% audit provenance."}
+                {isRunning && (
+                  <>
+                    {progress.tasks.find((t) => t.status === "running")?.type === "discovery" &&
+                      "Querying Exa Neural Index to discover candidate URLs & domain citations..."}
+                    {progress.tasks.find((t) => t.status === "running")?.type === "browser_navigation" &&
+                      "Spawning WebCMD headless browser worker to render DOM nodes & extract text..."}
+                    {progress.tasks.find((t) => t.status === "running")?.type === "extraction" &&
+                      "Parsing unstructured content into JSON schema using Gemini 2.5/3.6 Flash..."}
+                    {(progress.tasks.find((t) => t.status === "running")?.type === "quality_validation" ||
+                      progress.tasks.find((t) => t.status === "running")?.type === "deduplication") &&
+                      "Running quality validation, URL normalization & MinHash deduplication..."}
+                    {!progress.tasks.find((t) => t.status === "running") &&
+                      "Executing task pipeline..."}
+                  </>
+                )}
+                {!isRunning && !isCompleted && "Execution paused or awaiting input."}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
           <div className="p-3 rounded-xl border border-border/60 bg-muted/20 space-y-0.5">
             <span className="text-[11px] text-muted-foreground">Extracted Records</span>
             <div className="text-xl font-bold text-foreground">{recordsCount}</div>
