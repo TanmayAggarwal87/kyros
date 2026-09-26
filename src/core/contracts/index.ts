@@ -5,3 +5,8 @@ export * from './planner';
 export * from './events';
 export * from './dataset';
 export * from './credits';
+export * from './artifacts';
+export * from './research';
+export * from './webcmd';
+export * from './extraction';
+export * from './quality';

@@ -17,6 +17,9 @@ export const serverEnvSchema = z.object({
   BASE_SEPOLIA_RPC_URL: z.string().url().default('https://sepolia.base.org'),
   BASE_SEPOLIA_CHAIN_ID: z.number().int().default(84532),
   X402_PAYMENT_FACILITATOR_URL: z.string().url().optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  EXA_API_KEY: z.string().optional(),
+  WEBCMD_API_KEY: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
